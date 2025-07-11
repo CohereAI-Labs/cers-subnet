@@ -1,0 +1,10 @@
+What is Bittensor?
+How does Cohere's RAG work?
+Explain the concept of a decentralized AI network.
+What is the capital of France?
+Describe the architecture of a transformer model.
+Who wrote the novel '1984'?
+What are the main components of a computer?
+Explain the difference between supervised and unsupervised learning.
+What is the speed of light?
+Tell me about the history of the internet.
