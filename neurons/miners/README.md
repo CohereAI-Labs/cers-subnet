@@ -23,6 +23,32 @@ To be competitive, miners should run on hardware capable of handling large-scale
 -   **Storage**: A fast NVMe SSD with at least 200GB of free space. The storage requirement will grow depending on the amount of data indexed.
 -   **Network**: A stable, low-latency internet connection.
 
+## 🔒 Security Best Practices
+
+Running a miner involves exposing an API to the internet, so security is critical. Follow these best practices to protect your node and the data you are entrusted with.
+
+### 1. API Key Management
+Your `MINER_API_KEY` is a secret and must be protected.
+
+-   **Use Strong, Random Keys**: Generate a long, random string for your API key.
+-   **Use Environment Variables**: As shown in the examples, always load your API key from an environment variable. **Never hardcode it in your scripts or commit it to version control (e.g., Git).**
+-   **Do Not Share It**: The API key should only be known to you and the enterprise/validator you are serving.
+
+### 2. Network Security
+By default, the miner's API is accessible on the network.
+
+-   **Firewall Configuration**: It is **highly recommended** to configure a firewall on your server to restrict access to the miner's API port (`--miner.api_port`, default `8001`). Only allow incoming connections from the specific IP addresses of the validators or enterprise systems that need to push data to you. This prevents unauthorized access and potential abuse.
+-   **Avoid Exposing Unnecessary Ports**: Only expose the ports that are absolutely necessary for the miner's operation (the API port and the Bittensor axon port).
+
+### 3. Data Handling
+This subnet is designed with a privacy-first approach.
+
+-   **No Raw Data**: Remember that as a miner, you only handle non-reversible numerical embeddings and document IDs, not the original sensitive document content. This significantly reduces your security risk and liability.
+
+### 4. System Hardening
+-   **Regular Updates**: Keep your operating system and all software dependencies (including Python packages and Docker) up to date with the latest security patches.
+-   **Principle of Least Privilege**: Run the miner process with a dedicated, non-root user that has only the necessary permissions to operate.
+
 ## Getting Started
 
 ### 1. Clone the Repository
@@ -61,9 +87,10 @@ btcli wallet new_hotkey --wallet.name my_miner_wallet --wallet.hotkey default
 2.  **Run the Miner**: Launch the miner, pointing it to your wallet and the desired netuid.
     ```bash
     python neurons/miner.py \
-        --netuid <your_netuid> \
+        --netuid 69 \
         --wallet.name my_miner_wallet \
         --wallet.hotkey default \
+        --miner.db_path ./chroma_db
         --logging.debug
     ```
 

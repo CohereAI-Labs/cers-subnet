@@ -72,14 +72,13 @@ class Miner(BaseMinerNeuron):
 
         # --- Configuration for API and Database ---
         self.api_port = self.config.get('miner.api_port', 8001)
-        # It's more secure to load secrets from environment variables
-        self.api_key = os.getenv('MINER_API_KEY', self.config.get('miner.api_key'))
+        self.api_key = os.getenv('MINER_API_KEY')
         db_path = self.config.get('miner.db_path', './chroma_db')
         collection_name = self.config.get('miner.collection_name', 'enterprise-rag')
 
-        if not self.api_key or self.api_key == 'default_api_key_replace_me':
-            bt.logging.warning(
-                "API key is not set or is using the default value. Please set a secure key using the MINER_API_KEY environment variable."
+        if not self.api_key:
+            bt.logging.error(
+                "MINER_API_KEY environment variable not set. The miner's API will be unsecured. Please set a secure key."
             )
 
         # Setup ChromaDB. We'll use a persistent client to store data on disk.
@@ -153,24 +152,29 @@ class Miner(BaseMinerNeuron):
             detail="Invalid or missing API Key",
         )
 
-    def run_api(self):
+    def run_api(self) -> None:
         """Runs the FastAPI server."""
         bt.logging.info(f"Running API server on port {self.api_port}")
         uvicorn.run(self.app, host="0.0.0.0", port=self.api_port)
 
-    def setup_api_routes(self):
+    def setup_api_routes(self) -> None:
         """Sets up the API routes for the miner."""
         @self.app.post("/documents", status_code=201)
-        def upsert_endpoint(payload: DocumentPayload, api_key: str = fastapi.Security(self.get_api_key)):
-            if not self.upsert_document(payload.id, payload.document):
+        async def upsert_endpoint(payload: DocumentPayload, api_key: str = fastapi.Security(self.get_api_key)):
+            if not await self.upsert_document(payload.id, payload.document):
                 raise fastapi.HTTPException(status_code=500, detail="Failed to upsert document")
             return {"status": "success", "id": payload.id, "message": "Document upserted successfully."}
 
         @self.app.delete("/documents/{doc_id}")
-        def delete_endpoint(doc_id: str, api_key: str = fastapi.Security(self.get_api_key)):
-            if not self.delete_document(doc_id):
+        async def delete_endpoint(doc_id: str, api_key: str = fastapi.Security(self.get_api_key)):
+            if not await self.delete_document(doc_id):
                 raise fastapi.HTTPException(status_code=404, detail="Document not found or failed to delete")
             return {"status": "success", "id": doc_id, "message": "Document deleted successfully."}
+
+        @self.app.get("/health", status_code=200)
+        def health_check():
+            """A simple health check endpoint for monitoring."""
+            return {"status": "ok"}
 
     async def forward(
         self, synapse: cers_subnet.protocol.EnterpriseRAG
@@ -216,46 +220,49 @@ class Miner(BaseMinerNeuron):
         bt.logging.info(f"Returning {len(synapse.document_ids)} document IDs.")
         return synapse
 
-    def upsert_document(self, id: str, document: str) -> bool:
+    def _blocking_upsert(self, doc_id: str, document: str):
         """
-        Upserts a document into the ChromaDB collection (adds if new, updates if exists).
+        The synchronous, blocking part of the upsert operation.
+        This involves encoding the document and writing to the database.
+        """
+        embedding = self.embedding_model.encode(document).tolist()
+        self.collection.upsert(
+            ids=[doc_id],
+            embeddings=[embedding]
+            # We do not store the document content itself for security reasons.
+        )
+
+    async def upsert_document(self, doc_id: str, document: str) -> bool:
+        """
+        Asynchronously upserts a document into the ChromaDB collection.
 
         Args:
-            id (str): The unique ID of the document to update.
+            doc_id (str): The unique ID of the document to update.
             document (str): The text content for the document.
         
         Returns:
             bool: True if upsert was successful, False otherwise.
         """
         try:
-            embedding = self.embedding_model.encode(document).tolist()
-            self.collection.upsert(
-                ids=[id],
-                embeddings=[embedding]
-                # We do not store the document content itself for security reasons.
-            )
-            bt.logging.info(f"Successfully upserted document with id: {id}")
+            await asyncio.to_thread(self._blocking_upsert, doc_id, document)
+            bt.logging.info(f"Successfully upserted document with id: {doc_id}")
             return True
         except Exception as e:
-            bt.logging.error(f"Failed to upsert document with id {id}: {e}")
+            bt.logging.error(f"Failed to upsert document with id {doc_id}: {e}")
             return False
 
-    def delete_document(self, id: str) -> bool:
-        """
-        Deletes a document from the ChromaDB collection using its ID.
+    def _blocking_delete(self, doc_id: str):
+        """The synchronous, blocking part of the delete operation."""
+        self.collection.delete(ids=[doc_id])
 
-        Args:
-            id (str): The unique ID of the document to delete.
-        
-        Returns:
-            bool: True if deletion was successful, False otherwise.
-        """
+    async def delete_document(self, doc_id: str) -> bool:
+        """Asynchronously deletes a document from the ChromaDB collection using its ID."""
         try:
-            self.collection.delete(ids=[id])
-            bt.logging.info(f"Successfully deleted document with id: {id}")
+            await asyncio.to_thread(self._blocking_delete, doc_id)
+            bt.logging.info(f"Successfully deleted document with id: {doc_id}")
             return True
         except Exception as e:
-            bt.logging.error(f"Failed to delete document with id {id}: {e}")
+            bt.logging.error(f"Failed to delete document with id {doc_id}: {e}")
             return False
 
     async def blacklist(
