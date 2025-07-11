@@ -1,7 +1,5 @@
 # The MIT License (MIT)
-# Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2024 Cohere
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -19,15 +17,17 @@
 
 
 import time
+import os
 
 # Bittensor
 import bittensor as bt
 
 # import base validator class which takes care of most of the boilerplate
-from template.base.validator import BaseValidatorNeuron
+from cers_subnet.base.validator import BaseValidatorNeuron
 
 # Bittensor Validator Template:
-from template.validator import forward
+from cers_subnet.validator import forward
+from sentence_transformers import CrossEncoder
 
 
 class Validator(BaseValidatorNeuron):
@@ -45,7 +45,34 @@ class Validator(BaseValidatorNeuron):
         bt.logging.info("load_state()")
         self.load_state()
 
-        # TODO(developer): Anything specific to your use case you can do here
+        bt.logging.info("Validator for Cohere Enterprise RAG Subnet initialized.")
+
+        # TODO(developer): Anything specific to your use case you can do here.
+        # For this example, we'll load a model for scoring responses.
+        self.cross_encoder_model = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+        bt.logging.info("Cross Encoder model loaded for scoring.")
+        
+        # Load queries from a file to make them easily configurable
+        self.queries = self.load_queries()
+
+    def load_queries(self):
+        """Loads queries from the data/queries.txt file."""
+        queries_file = self.config.get('validator.queries_file', 'data/queries.txt')
+        queries_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
+            queries_file
+        )
+        try:
+            with open(queries_path, "r", encoding="utf-8") as f:
+                queries = [line.strip() for line in f if line.strip()]
+            bt.logging.info(f"Loaded {len(queries)} queries from {queries_path}")
+            return queries
+        except FileNotFoundError:
+            bt.logging.warning(f"Queries file not found at {queries_path}. Using default queries.")
+            return [
+                "What is Bittensor?", "How does Cohere's RAG work?", 
+                "Explain the concept of a decentralized AI network.", "What is the capital of France?"
+            ]
 
     async def forward(self):
         """

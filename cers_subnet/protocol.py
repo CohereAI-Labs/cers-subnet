@@ -16,27 +16,16 @@
 # DEALINGS IN THE SOFTWARE.
 
 import bittensor as bt
-from typing import List, Optional, Union, Any, Dict
-from template.protocol import Dummy
-from bittensor.subnets import SubnetsAPI
+import typing
 
+class EnterpriseRAG(bt.Synapse):
+    """
+    A secure RAG synapse protocol for enterprise use.
+    It transports a query string and returns a list of document IDs,
+    ensuring that sensitive document content is never exposed.
+    """
+    query: str
+    document_ids: typing.List[str] = []
 
-class DummyAPI(SubnetsAPI):
-    def __init__(self, wallet: "bt.wallet"):
-        super().__init__(wallet)
-        self.netuid = 33
-        self.name = "dummy"
-
-    def prepare_synapse(self, dummy_input: int) -> Dummy:
-        synapse.dummy_input = dummy_input
-        return synapse
-
-    def process_responses(
-        self, responses: List[Union["bt.Synapse", Any]]
-    ) -> List[int]:
-        outputs = []
-        for response in responses:
-            if response.dendrite.status_code != 200:
-                continue
-            return outputs.append(response.dummy_output)
-        return outputs
+    def deserialize(self) -> typing.List[str]:
+        return self.document_ids

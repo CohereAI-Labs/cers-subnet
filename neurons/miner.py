@@ -1,7 +1,5 @@
 # The MIT License (MIT)
-# Copyright © 2023 Yuma Rao
-# TODO(developer): Set your name
-# Copyright © 2023 <your name>
+# Copyright © 2024 Cohere
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
@@ -22,11 +20,30 @@ import typing
 import bittensor as bt
 
 # Bittensor Miner Template:
-import template
+import cers_subnet
+
+import torch
+from sentence_transformers import SentenceTransformer
+
+import asyncio
+import secrets
+import chromadb
+import csv
+import os
 
 # import base miner class which takes care of most of the boilerplate
-from template.base.miner import BaseMinerNeuron
+from cers_subnet.base.miner import BaseMinerNeuron
 
+# New imports for the API
+import fastapi
+import uvicorn
+import threading, os, csv
+from pydantic import BaseModel
+
+
+class DocumentPayload(BaseModel):
+    id: str
+    document: str
 
 class Miner(BaseMinerNeuron):
     """
@@ -40,30 +57,209 @@ class Miner(BaseMinerNeuron):
     def __init__(self, config=None):
         super(Miner, self).__init__(config=config)
 
-        # TODO(developer): Anything specific to your use case you can do here
+        # TODO(developer): Set up everything specific to your use case here.
+        # For example, loading a search model, a vector database, etc.
+        bt.logging.info("Miner for Cohere Enterprise RAG Subnet initialized.")
+
+        # For this example, we'll use a sentence-transformer model for embeddings.
+        self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+        bt.logging.info("Sentence Transformer model loaded.")
+
+        # Explicitly move the model to the configured device (e.g., "cuda" or "cpu")
+        self.device = self.config.get("neuron.device", "cuda" if torch.cuda.is_available() else "cpu")
+        self.embedding_model.to(self.device)
+        bt.logging.info(f"Embedding model moved to device: {self.device}")
+
+        # --- Configuration for API and Database ---
+        self.api_port = self.config.get('miner.api_port', 8001)
+        # It's more secure to load secrets from environment variables
+        self.api_key = os.getenv('MINER_API_KEY', self.config.get('miner.api_key'))
+        db_path = self.config.get('miner.db_path', './chroma_db')
+        collection_name = self.config.get('miner.collection_name', 'enterprise-rag')
+
+        if not self.api_key or self.api_key == 'default_api_key_replace_me':
+            bt.logging.warning(
+                "API key is not set or is using the default value. Please set a secure key using the MINER_API_KEY environment variable."
+            )
+
+        # Setup ChromaDB. We'll use a persistent client to store data on disk.
+        self.chroma_client = chromadb.PersistentClient(path=db_path)
+        self.collection = self.chroma_client.get_or_create_collection(
+            name=collection_name,
+            # It's good practice to specify the embedding function for the collection
+            # although we are providing the embeddings manually in this case.
+            metadata={"hnsw:space": "cosine"} # Use cosine similarity
+        )
+        bt.logging.info("ChromaDB client and collection initialized.")
+
+        # If the collection is empty, we populate it with initial documents from a CSV file in batches.
+        if self.collection.count() == 0:
+            bt.logging.info("ChromaDB collection is empty. Populating with initial documents...")
+            self.load_documents_from_csv()
+        
+        # Setup and run the API server in a background thread
+        self.app = fastapi.FastAPI()
+        self.api_key_header = fastapi.security.APIKeyHeader(name="X-API-Key", auto_error=False)
+        self.setup_api_routes()
+
+        self.api_thread = threading.Thread(
+            target=self.run_api,
+            daemon=True
+        )
+        self.api_thread.start()
+
+    def load_documents_from_csv(self):
+        """Loads documents from a CSV file and adds them to the ChromaDB collection."""
+        documents_file = self.config.get('miner.documents_file', 'data/documents.csv')
+        documents_path = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
+            documents_file
+        )
+        
+        batch_size = self.config.get('miner.batch_size', 100)
+        bt.logging.info(f"Starting to load documents from {documents_path} with batch size {batch_size}.")
+
+        try:
+            documents_to_add, ids_to_add = [], []
+            with open(documents_path, "r", newline="", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    ids_to_add.append(row['id'])
+                    documents_to_add.append(row['text'])
+
+                    if len(ids_to_add) >= batch_size:
+                        embeddings = self.embedding_model.encode(documents_to_add).tolist()
+                        self.collection.add(embeddings=embeddings, ids=ids_to_add)
+                        bt.logging.info(f"Added batch of {len(documents_to_add)} documents to ChromaDB.")
+                        documents_to_add, ids_to_add = [], []
+            
+            # Add any remaining documents
+            if documents_to_add:
+                embeddings = self.embedding_model.encode(documents_to_add).tolist()
+                self.collection.add(embeddings=embeddings, ids=ids_to_add)
+                bt.logging.info(f"Added final batch of {len(documents_to_add)} documents to ChromaDB.")
+
+        except FileNotFoundError:
+            bt.logging.error(f"Documents file not found at {documents_path}. Cannot populate miner knowledge base.")
+        except Exception as e:
+            bt.logging.error(f"Failed to load documents from CSV: {e}")
+
+    def get_api_key(self, api_key_header: str = fastapi.Security(api_key_header)):
+        # Use secrets.compare_digest for constant-time comparison to help prevent timing attacks
+        if api_key_header and self.api_key and secrets.compare_digest(api_key_header, self.api_key):
+            return api_key_header
+        raise fastapi.HTTPException(
+            status_code=fastapi.status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or missing API Key",
+        )
+
+    def run_api(self):
+        """Runs the FastAPI server."""
+        bt.logging.info(f"Running API server on port {self.api_port}")
+        uvicorn.run(self.app, host="0.0.0.0", port=self.api_port)
+
+    def setup_api_routes(self):
+        """Sets up the API routes for the miner."""
+        @self.app.post("/documents", status_code=201)
+        def upsert_endpoint(payload: DocumentPayload, api_key: str = fastapi.Security(self.get_api_key)):
+            if not self.upsert_document(payload.id, payload.document):
+                raise fastapi.HTTPException(status_code=500, detail="Failed to upsert document")
+            return {"status": "success", "id": payload.id, "message": "Document upserted successfully."}
+
+        @self.app.delete("/documents/{doc_id}")
+        def delete_endpoint(doc_id: str, api_key: str = fastapi.Security(self.get_api_key)):
+            if not self.delete_document(doc_id):
+                raise fastapi.HTTPException(status_code=404, detail="Document not found or failed to delete")
+            return {"status": "success", "id": doc_id, "message": "Document deleted successfully."}
 
     async def forward(
-        self, synapse: template.protocol.Dummy
-    ) -> template.protocol.Dummy:
+        self, synapse: cers_subnet.protocol.EnterpriseRAG
+    ) -> cers_subnet.protocol.EnterpriseRAG:
         """
-        Processes the incoming 'Dummy' synapse by performing a predefined operation on the input data.
+        Processes the incoming 'EnterpriseRAG' synapse by performing a simulated document search.
         This method should be replaced with actual logic relevant to the miner's purpose.
 
         Args:
-            synapse (template.protocol.Dummy): The synapse object containing the 'dummy_input' data.
+            synapse (cers_subnet.protocol.EnterpriseRAG): The synapse object containing the query.
 
         Returns:
-            template.protocol.Dummy: The synapse object with the 'dummy_output' field set to twice the 'dummy_input' value.
-
-        The 'forward' function is a placeholder and should be overridden with logic that is appropriate for
-        the miner's intended operation. This method demonstrates a basic transformation of input data.
+            cers_subnet.protocol.EnterpriseRAG: The synapse object with the 'documents' field filled with the search results.
         """
-        # TODO(developer): Replace with actual implementation logic.
-        synapse.dummy_output = synapse.dummy_input * 2
+        # Now, we use ChromaDB to perform the semantic search.
+        bt.logging.info(f"Received query: {synapse.query}")
+
+        def _search_and_retrieve(query: str) -> list:
+            """
+            Encapsulates the synchronous, CPU/GPU-bound and I/O-bound operations.
+            """
+            # 1. Encode the query to get its embedding.
+            query_embedding = self.embedding_model.encode(query).tolist()
+
+            # 2. Query ChromaDB for the top-k most similar documents.
+            k = self.config.get('miner.search_k', 2)  # Number of documents to return
+            
+            # Ensure we don't ask for more results than exist
+            n_results = min(k, self.collection.count())
+            if n_results == 0:
+                return []
+            
+            results = self.collection.query(
+                query_embeddings=[query_embedding],
+                n_results=n_results
+            )
+            return results.get('ids', [[]])[0]
+
+        # Run the blocking operations in a separate thread to avoid blocking the asyncio event loop.
+        # This is crucial for maintaining responsiveness under load.
+        synapse.document_ids = await asyncio.to_thread(_search_and_retrieve, synapse.query)
+
+        bt.logging.info(f"Returning {len(synapse.document_ids)} document IDs.")
         return synapse
 
+    def upsert_document(self, id: str, document: str) -> bool:
+        """
+        Upserts a document into the ChromaDB collection (adds if new, updates if exists).
+
+        Args:
+            id (str): The unique ID of the document to update.
+            document (str): The text content for the document.
+        
+        Returns:
+            bool: True if upsert was successful, False otherwise.
+        """
+        try:
+            embedding = self.embedding_model.encode(document).tolist()
+            self.collection.upsert(
+                ids=[id],
+                embeddings=[embedding]
+                # We do not store the document content itself for security reasons.
+            )
+            bt.logging.info(f"Successfully upserted document with id: {id}")
+            return True
+        except Exception as e:
+            bt.logging.error(f"Failed to upsert document with id {id}: {e}")
+            return False
+
+    def delete_document(self, id: str) -> bool:
+        """
+        Deletes a document from the ChromaDB collection using its ID.
+
+        Args:
+            id (str): The unique ID of the document to delete.
+        
+        Returns:
+            bool: True if deletion was successful, False otherwise.
+        """
+        try:
+            self.collection.delete(ids=[id])
+            bt.logging.info(f"Successfully deleted document with id: {id}")
+            return True
+        except Exception as e:
+            bt.logging.error(f"Failed to delete document with id {id}: {e}")
+            return False
+
     async def blacklist(
-        self, synapse: template.protocol.Dummy
+        self, synapse: cers_subnet.protocol.EnterpriseRAG
     ) -> typing.Tuple[bool, str]:
         """
         Determines whether an incoming request should be blacklisted and thus ignored. Your implementation should
@@ -74,7 +270,7 @@ class Miner(BaseMinerNeuron):
         requests before they are deserialized to avoid wasting resources on requests that will be ignored.
 
         Args:
-            synapse (template.protocol.Dummy): A synapse object constructed from the headers of the incoming request.
+            synapse (cers_subnet.protocol.EnterpriseRAG): A synapse object constructed from the headers of the incoming request.
 
         Returns:
             Tuple[bool, str]: A tuple containing a boolean indicating whether the synapse's hotkey is blacklisted,
@@ -126,7 +322,7 @@ class Miner(BaseMinerNeuron):
         )
         return False, "Hotkey recognized!"
 
-    async def priority(self, synapse: template.protocol.Dummy) -> float:
+    async def priority(self, synapse: cers_subnet.protocol.EnterpriseRAG) -> float:
         """
         The priority function determines the order in which requests are handled. More valuable or higher-priority
         requests are processed before others. You should design your own priority mechanism with care.
@@ -134,7 +330,7 @@ class Miner(BaseMinerNeuron):
         This implementation assigns priority to incoming requests based on the calling entity's stake in the metagraph.
 
         Args:
-            synapse (template.protocol.Dummy): The synapse object that contains metadata about the incoming request.
+            synapse (cers_subnet.protocol.EnterpriseRAG): The synapse object that contains metadata about the incoming request.
 
         Returns:
             float: A priority score derived from the stake of the calling entity.

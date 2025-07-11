@@ -5,3 +5,7 @@ pytest>=8
 torch>=2
 numpy>=1
 setuptools>=68
+sentence-transformers>=2.2.2
+chromadb>=0.4.24
+fastapi>=0.104.1
+uvicorn>=0.24.0

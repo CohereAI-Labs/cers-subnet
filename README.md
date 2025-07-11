@@ -1,41 +1,50 @@
 <div align="center">
 
-# **Bittensor Subnet Template** <!-- omit in toc -->
-[![Discord Chat](https://img.shields.io/discord/308323056592486420.svg)](https://discord.gg/bittensor)
+# **Cohere Enterprise RAG Subnet** <!-- omit in toc -->
+[![Discord Chat](https://img.shields.io/discord/308323056592486420.svg)](https://discord.gg/bittensor) <!-- TODO: Update with the project's Discord if applicable -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
 
 ---
 
 ## The Incentivized Internet <!-- omit in toc -->
 
-[Discord](https://discord.gg/bittensor) • [Network](https://taostats.io/) • [Research](https://bittensor.com/whitepaper)
+[Discord](https://discord.gg/bittensor) • [@cohere](https://x.com/cohere) • [Website](https://www.cohere.com)
 </div>
 
 ---
-- [Quickstarter template](#quickstarter-template)
 - [Introduction](#introduction)
-  - [Example](#example)
-- [Installation](#installation)
-  - [Before you proceed](#before-you-proceed)
-  - [Install](#install)
-- [Writing your own incentive mechanism](#writing-your-own-incentive-mechanism)
-- [Writing your own subnet API](#writing-your-own-subnet-api)
-- [Subnet Links](#subnet-links)
+  - [Subnet Concept](#subnet-concept)
+  - [Strategic Partnership](#strategic-partnership)
+- [How it works on Bittensor](#how-it-works-on-bittensor)
+- [🔒 Security and Data Privacy](#-security-and-data-privacy)
+  - [Architecture Overview](#architecture-overview)
+- [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [1. Clone \& Install](#1-clone--install)
+  - [2. Configure Your Wallet](#2-configure-your-wallet)
+  - [3. Run the Subnet](#3-run-the-subnet)
+    - [For Miners](#for-miners)
 - [License](#license)
 
 ---
-## Quickstarter template
-
-This template contains all the required installation instructions, scripts, and files and functions for:
-- Building Bittensor subnets.
-- Creating custom incentive mechanisms and running these mechanisms on the subnets. 
-
-In order to simplify the building of subnets, this template abstracts away the complexity of the underlying blockchain and other boilerplate code. While the default behavior of the template is sufficient for a simple subnet, you should customize the template in order to meet your specific requirements.
----
-
 ## Introduction
 
-**IMPORTANT**: If you are new to Bittensor subnets, read this section before proceeding to [Installation](#installation) section. 
+The **Cohere Enterprise RAG Subnet** is a decentralized network on Bittensor, designed to enhance Retrieval Augmented Generation (RAG) systems for Cohere's enterprise clients.
+
+### Subnet Concept
+
+This subnet specializes in optimizing RAG pipelines. Miners on the network contribute in several ways:
+- **Specific Knowledge Indexing**: They store and index embeddings derived from private, company-specific knowledge bases to enable highly accurate and secure searches. Miners never have access to the raw document content.
+- **Retrieval Algorithm Optimization**: They develop and run information retrieval algorithms optimized for specific domains.
+- **Secure Retrieval**: They return document IDs corresponding to the most relevant information, which the enterprise can then use to retrieve the actual content from its own secure datastores.
+
+### Strategic Partnership
+
+As a leader in enterprise AI solutions, Cohere uses this subnet to offer its clients enhanced customization and performance for their language models on proprietary data. This partnership allows companies to benefit from a decentralized, robust, and secure RAG infrastructure without having to manage it in-house.
+
+---
+
+## How it works on Bittensor
 
 The Bittensor blockchain hosts multiple self-contained incentive mechanisms called **subnets**. Subnets are playing fields in which:
 - Subnet miners who produce value, and
@@ -48,154 +57,119 @@ Each subnet consists of:
 - A protocol using which the subnet miners and subnet validators interact with one another. This protocol is part of the incentive mechanism.
 - The Bittensor API using which the subnet miners and subnet validators interact with Bittensor's onchain consensus engine [Yuma Consensus](https://bittensor.com/documentation/validating/yuma-consensus). The Yuma Consensus is designed to drive these actors: subnet validators and subnet miners, into agreement on who is creating value and what that value is worth. 
 
-This starter template is split into three primary files. To write your own incentive mechanism, you should edit these files. These files are:
-1. `template/protocol.py`: Contains the definition of the protocol used by subnet miners and subnet validators.
-2. `neurons/miner.py`: Script that defines the subnet miner's behavior, i.e., how the subnet miner responds to requests from subnet validators.
-3. `neurons/validator.py`: This script defines the subnet validator's behavior, i.e., how the subnet validator requests information from the subnet miners and determines the scores.
-
-### Example
-
-The Bittensor Subnet 1 for Text Prompting is built using this template. See [prompting](https://github.com/macrocosm-os/prompting) for how to configure the files and how to add monitoring and telemetry and support multiple miner types. Also see this Subnet 1 in action on [Taostats](https://taostats.io/subnets/netuid-1/) explorer.
 
 ---
 
-## Installation
+## 🔒 Security and Data Privacy
 
-### Before you proceed
-Before you proceed with the installation of the subnet, note the following: 
+In an enterprise context, data privacy is paramount. This subnet is designed with a **privacy-first architecture** where sensitive enterprise data is never exposed to the public network or the miners.
 
-- Use these instructions to run your subnet locally for your development and testing, or on Bittensor testnet or on Bittensor mainnet. 
-- **IMPORTANT**: We **strongly recommend** that you first run your subnet locally and complete your development and testing before running the subnet on Bittensor testnet. Furthermore, make sure that you next run your subnet on Bittensor testnet before running it on the Bittensor mainnet.
-- You can run your subnet either as a subnet owner, or as a subnet validator or as a subnet miner. 
-- **IMPORTANT:** Make sure you are aware of the minimum compute requirements for your subnet. See the [Minimum compute YAML configuration](./min_compute.yml).
-- Note that installation instructions differ based on your situation: For example, installing for local development and testing will require a few additional steps compared to installing for testnet. Similarly, installation instructions differ for a subnet owner vs a validator or a miner. 
+### Architecture Overview
 
-### Install
+The following diagram illustrates the data flow and the separation of concerns between the enterprise environment and the Bittensor network, ensuring that raw data never leaves the enterprise's secure perimeter.
 
-- **Running locally**: Follow the step-by-step instructions described in this section: [Running Subnet Locally](./docs/running_on_staging.md).
-- **Running on Bittensor testnet**: Follow the step-by-step instructions described in this section: [Running on the Test Network](./docs/running_on_testnet.md).
-- **Running on Bittensor mainnet**: Follow the step-by-step instructions described in this section: [Running on the Main Network](./docs/running_on_mainnet.md).
+```mermaid
+graph TD
+    subgraph "Enterprise Secure Environment"
+        User((User)) -- "Asks a question" --> RAGApp["RAG Application"]
+        RAGApp -- "Sends query to Validator" --> Validator
+        Validator -- "Returns Document IDs" --> RAGApp
+        RAGApp -- "Retrieves documents by ID" --> SecureDB[("Secure Datastore")]
+        SecureDB -- "Document content" --> RAGApp
+        RAGApp -- "Generates final response" --> User
+        RawDocs[("Raw Documents")] --> EmbedGen["Embedding Generation"]
+        EmbedGen -- "Indexing:<br>Embeddings + Doc IDs" --> Miner
+    end
+
+    subgraph "Bittensor Network (CERS Subnet)"
+        Validator["Validator"] -- "Sends query embedding" --> Miner["Miner<br>(Vector Index)"]
+        Miner -- "Returns relevant Document IDs" --> Validator
+    end
+
+    style SecureDB fill:#f9f,stroke:#333,stroke-width:2px
+    style RawDocs fill:#f9f,stroke:#333,stroke-width:2px
+```
+
+Here’s how it works:
+1.  **Data Stays On-Premise**: The enterprise's raw documents (the knowledge base) remain within their secure environment.
+2.  **Embeddings, Not Data**: The enterprise generates numerical representations (embeddings) of their documents. Only these non-reversible embeddings, along with anonymous document IDs, are sent to the miners for indexing.
+3.  **Miner's Role**: Miners store and maintain a searchable index of these embeddings. They perform similarity searches based on query embeddings provided by validators. **Miners never see the original document content.**
+4.  **Secure Retrieval**: When a miner finds relevant results, it returns only the corresponding document IDs to the validator.
+5.  **Final-Mile RAG**: The enterprise uses these IDs to retrieve the full document text from its own secure database to complete the RAG process.
+
+This model ensures that companies can leverage the decentralized power of the Bittensor network for high-performance retrieval without ever compromising the confidentiality of their proprietary data.
 
 ---
+## Getting Started
 
-## Writing your own incentive mechanism
+This guide provides the essential steps to get the Cohere Enterprise RAG Subnet up and running.
 
-As described in [Quickstarter template](#quickstarter-template) section above, when you are ready to write your own incentive mechanism, update this template repository by editing the following files. The code in these files contains detailed documentation on how to update the template. Read the documentation in each of the files to understand how to update the template. There are multiple **TODO**s in each of the files identifying sections you should update. These files are:
-- `template/protocol.py`: Contains the definition of the wire-protocol used by miners and validators.
-- `neurons/miner.py`: Script that defines the miner's behavior, i.e., how the miner responds to requests from validators.
-- `neurons/validator.py`: This script defines the validator's behavior, i.e., how the validator requests information from the miners and determines the scores.
-- `template/forward.py`: Contains the definition of the validator's forward pass.
-- `template/reward.py`: Contains the definition of how validators reward miner responses.
+### Prerequisites
 
-In addition to the above files, you should also update the following files:
-- `README.md`: This file contains the documentation for your project. Update this file to reflect your project's documentation.
-- `CONTRIBUTING.md`: This file contains the instructions for contributing to your project. Update this file to reflect your project's contribution guidelines.
-- `template/__init__.py`: This file contains the version of your project.
-- `setup.py`: This file contains the metadata about your project. Update this file to reflect your project's metadata.
-- `docs/`: This directory contains the documentation for your project. Update this directory to reflect your project's documentation.
+Before you begin, ensure you have the following installed:
+- Python 3.8 or later
+- `pip` and `venv`
 
-__Note__
-The `template` directory should also be renamed to your project name.
----
+You also need to have `bittensor` installed. If you haven't installed it yet, follow the instructions here.
 
-# Writing your own subnet API
-To leverage the abstract `SubnetsAPI` in Bittensor, you can implement a standardized interface. This interface is used to interact with the Bittensor network and can be used by a client to interact with the subnet through its exposed axons.
+### 1. Clone & Install
 
-What does Bittensor communication entail? Typically two processes, (1) preparing data for transit (creating and filling `synapse`s) and (2), processing the responses received from the `axon`(s).
-
-This protocol uses a handler registry system to associate bespoke interfaces for subnets by implementing two simple abstract functions:
-- `prepare_synapse`
-- `process_responses`
-
-These can be implemented as extensions of the generic `SubnetsAPI` interface.  E.g.:
-
-
-This is abstract, generic, and takes(`*args`, `**kwargs`) for flexibility. See the extremely simple base class:
-```python
-class SubnetsAPI(ABC):
-    def __init__(self, wallet: "bt.wallet"):
-        self.wallet = wallet
-        self.dendrite = bt.dendrite(wallet=wallet)
-
-    async def __call__(self, *args, **kwargs):
-        return await self.query_api(*args, **kwargs)
-
-    @abstractmethod
-    def prepare_synapse(self, *args, **kwargs) -> Any:
-        """
-        Prepare the synapse-specific payload.
-        """
-        ...
-
-    @abstractmethod
-    def process_responses(self, responses: List[Union["bt.Synapse", Any]]) -> Any:
-        """
-        Process the responses from the network.
-        """
-        ...
-
+First, clone the repository and navigate into the directory:
+```bash
+git clone https://github.com/CohereAI-Labs/cers-subnet.git
+cd cers-subnet
 ```
 
+Next, set up a virtual environment and install the necessary dependencies. Using a virtual environment is highly recommended.
+```bash
+# Create and activate a virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
 
-Here is a toy example:
-
-```python
-from bittensor.subnets import SubnetsAPI
-from MySubnet import MySynapse
-
-class MySynapseAPI(SubnetsAPI):
-    def __init__(self, wallet: "bt.wallet"):
-        super().__init__(wallet)
-        self.netuid = 99
-
-    def prepare_synapse(self, prompt: str) -> MySynapse:
-        # Do any preparatory work to fill the synapse
-        data = do_prompt_injection(prompt)
-
-        # Fill the synapse for transit
-        synapse = StoreUser(
-            messages=[data],
-        )
-        # Send it along
-        return synapse
-
-    def process_responses(self, responses: List[Union["bt.Synapse", Any]]) -> str:
-        # Look through the responses for information required by your application
-        for response in responses:
-            if response.dendrite.status_code != 200:
-                continue
-            # potentially apply post processing
-            result_data = postprocess_data_from_response(response)
-        # return data to the client
-        return result_data
+# Install the package in editable mode
+pip install -e .
 ```
 
-You can use a subnet API to the registry by doing the following:
-1. Download and install the specific repo you want
-1. Import the appropriate API handler from bespoke subnets
-1. Make the query given the subnet specific API
+### 2. Configure Your Wallet
 
+To interact with the Bittensor network, you need a wallet with a coldkey and a hotkey.
+If you don't have one, create it using the Bittensor CLI (`btcli`):
+```bash
+# Create a new coldkey
+btcli wallet new_coldkey --wallet.name my_wallet
 
-
-# Subnet Links
-In order to see real-world examples of subnets in-action, see the `subnet_links.py` document or access them from inside the `template` package by:
-```python
-import template
-template.SUBNET_LINKS
-[{'name': 'sn0', 'url': ''},
- {'name': 'sn1', 'url': 'https://github.com/opentensor/prompting/'},
- {'name': 'sn2', 'url': 'https://github.com/bittranslateio/bittranslate/'},
- {'name': 'sn3', 'url': 'https://github.com/gitphantomman/scraping_subnet/'},
- {'name': 'sn4', 'url': 'https://github.com/manifold-inc/targon/'},
-...
-]
+# Create a new hotkey for your wallet
+btcli wallet new_hotkey --wallet.name my_wallet --wallet.hotkey default
 ```
+
+### 3. Run the Subnet
+
+You can participate in the subnet as either a miner or a validator.
+
+#### For Miners
+
+To run a miner, use the following command:
+```bash
+python neurons/miner.py --netuid <your-netuid> --wallet.name my_wallet --wallet.hotkey default --logging.debug --miner.api_key <your_secure_api_key>
+```
+
+**To run a validator:**
+```bash
+python neurons/validator.py --netuid <your-netuid> --wallet.name my_wallet --wallet.hotkey default --logging.debug
+```
+> **Note**: Replace `<your-netuid>` with the actual `netuid` of the subnet you wish to connect to.
+
+For more detailed instructions, including how to register your keys and run on different networks (local, testnet, mainnet), please refer to our full documentation:
+- Running Subnet Locally
+- Running on the Test Network
+- Running on the Main Network
+
 
 ## License
 This repository is licensed under the MIT License.
 ```text
 # The MIT License (MIT)
-# Copyright © 2024 Opentensor Foundation
+# Copyright © 2024 Cohere
 
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
 # documentation files (the “Software”), to deal in the Software without restriction, including without limitation
