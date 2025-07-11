@@ -30,23 +30,30 @@ async def forward(self):
 
     miner_uids = get_random_uids(self, k=self.config.neuron.sample_size)
 
-    # Use the pre-loaded queries from the validator instance.
-    if not self.queries:
-        bt.logging.error("No queries loaded. Cannot proceed with forward pass.")
+    # The validator should have a benchmark dataset of queries and their expected results.
+    # This should be loaded in the validator's __init__ method.
+    if not self.benchmark_dataset:
+        bt.logging.error("No benchmark dataset loaded. Cannot proceed with forward pass.")
         return
 
-    query_text = random.choice(self.queries)
+    # Select a random query and its ground truth from the dataset
+    benchmark_item = random.choice(self.benchmark_dataset)
+    query_text = benchmark_item['query']
+    expected_doc_ids = set(benchmark_item['relevant_docs']) # Use a set for efficient lookups
 
     bt.logging.info(f"Sending query: '{query_text}' to miners: {miner_uids}")
+    bt.logging.info(f"Expected document IDs: {expected_doc_ids}")
 
     # The dendrite client queries the network.
     responses = await self.dendrite(
         axons=[self.metagraph.axons[uid] for uid in miner_uids],
         synapse=EnterpriseRAG(query=query_text),
         deserialize=False, # We need the full synapse object for scoring
+        timeout=self.config.neuron.timeout, # Add a timeout for robustness
     )
 
-    rewards = get_rewards(self, query=query_text, responses=responses)
+    # The reward function now needs the expected IDs to score responses.
+    rewards = get_rewards(self, expected_doc_ids=expected_doc_ids, responses=responses)
 
     bt.logging.info(f"Scored responses: {rewards}")
     self.update_scores(rewards, miner_uids)

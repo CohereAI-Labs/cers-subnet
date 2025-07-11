@@ -17,48 +17,49 @@
 
 import torch
 import bittensor as bt
-from typing import List
+from typing import List, Set
 
 def get_rewards(
     self,
-    query: str,
+    expected_doc_ids: Set[str],
     responses: List[bt.Synapse],
 ) -> torch.FloatTensor:
     """
     Returns a tensor of rewards for the given query and responses.
-    
+
     Args:
-    - query (str): The query sent to the miner.
+    - expected_doc_ids (Set[str]): A set of relevant document IDs for the query.
     - responses (List[bt.Synapse]): A list of responses from the miner synapses.
-    
+
     Returns:
     - torch.FloatTensor: A tensor of rewards for the responses.
     """
     # Get the scores for the responses.
-    scores = torch.FloatTensor([self.score_response(response) for response in responses]).to(self.device)
+    scores = torch.FloatTensor(
+        [
+            score_response(response, expected_doc_ids)
+            for response in responses
+        ]
+    ).to(self.device)
     return scores
 
-def score_response(self, response: bt.Synapse) -> float:
+def score_response(response: bt.Synapse, expected_doc_ids: Set[str]) -> float:
     """
-    Scores a single response. In this placeholder, we reward based on whether documents were returned.
-    This function uses a Cross-Encoder model to score the relevance of the documents.
-    A Cross-Encoder is more accurate than a bi-encoder for re-ranking tasks.
+    Scores a single response based on the Mean Reciprocal Rank (MRR) of the returned document IDs.
+    The score is 1/rank of the first relevant document found.
     """
-    if not response.documents or len(response.documents) == 0:
+    # Penalize responses that are not successful or have no document_ids
+    if not response.dendrite.is_success or not response.document_ids:
         return 0.0
 
-    # A Cross-Encoder model expects a list of [query, document] pairs.
-    try:
-        # Create pairs of [query, document] for the cross-encoder
-        model_input = [[response.query, doc] for doc in response.documents]
-        
-        # Get scores from the cross-encoder model. The output is a numpy array.
-        scores = self.cross_encoder_model.predict(model_input)
-        
-        # The score for the response is the highest score among all returned documents.
-        # We convert it to a float.
-        return float(max(scores))
-
-    except Exception as e:
-        bt.logging.error(f"Error during scoring with cross-encoder: {e}")
-        return 0.0
+    # Find the rank of the first relevant document.
+    for i, doc_id in enumerate(response.document_ids):
+        if doc_id in expected_doc_ids:
+            # Rank is i + 1. MRR score is 1 / rank.
+            mrr_score = 1.0 / (i + 1)
+            bt.logging.trace(f"Scored response for hotkey {response.axon.hotkey}: {mrr_score} (found relevant doc at rank {i+1})")
+            return mrr_score
+            
+    # No relevant documents found in the response.
+    bt.logging.trace(f"Scored response for hotkey {response.axon.hotkey}: 0.0 (no relevant docs found)")
+    return 0.0
