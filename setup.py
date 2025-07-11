@@ -63,14 +63,14 @@ with codecs.open(
 setup(
     name="cers_subnet",
     version=version_string,
-    description="A Bittensor subnet for improving RAG systems in partnership with Cohere.",
+    description="A decentralized Bittensor subnet that empowers enterprises to build secure, high-performance RAG applications on their private data.",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/your-org/cers-subnet",  # TODO(developer): Put your repo URL here
+    url="https://github.com/CohereAI-Labs/cers-subnet",
     author="Cohere & Bittensor Community",
     packages=find_packages(),
     include_package_data=True,
-    author_email="contact@cohere.com",  # TODO(developer): Put a contact email here
+    author_email="contact@cohere.com",
     license="MIT",
     python_requires=">=3.8",
     install_requires=requirements,

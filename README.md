@@ -6,15 +6,14 @@
 
 ---
 
-## The Incentivized Internet <!-- omit in toc -->
+## Powering Secure, High-Performance Enterprise RAG <!-- omit in toc -->
 
 [Discord](https://discord.gg/bittensor) • [@cohere](https://x.com/cohere) • [Website](https://www.cohere.com)
 </div>
 
 ---
 - [Introduction](#introduction)
-  - [Subnet Concept](#subnet-concept)
-  - [Strategic Partnership](#strategic-partnership)
+- [What This Subnet Solves for an Enterprise](#what-this-subnet-solves-for-an-enterprise)
 - [How it works on Bittensor](#how-it-works-on-bittensor)
 - [🔒 Security and Data Privacy](#-security-and-data-privacy)
   - [Architecture Overview](#architecture-overview)
@@ -22,25 +21,30 @@
   - [Prerequisites](#prerequisites)
   - [1. Clone \& Install](#1-clone--install)
   - [2. Configure Your Wallet](#2-configure-your-wallet)
-  - [3. Run the Subnet](#3-run-the-subnet)
+  - [3. Run](#3-run)
     - [For Miners](#for-miners)
 - [License](#license)
 
 ---
 ## Introduction
 
-The **Cohere Enterprise RAG Subnet** is a decentralized network on Bittensor, designed to enhance Retrieval Augmented Generation (RAG) systems for Cohere's enterprise clients.
+Unlock the full potential of your enterprise data with the **Cohere Enterprise RAG Subnet**. In today's AI-driven landscape, leveraging proprietary information is the key to a competitive edge. However, building and scaling a secure, high-performance Retrieval-Augmented Generation (RAG) system presents a significant challenge for many organizations.
 
-### Subnet Concept
+This Bittensor subnet provides a decentralized, incentivized solution. It allows enterprises to supercharge their AI applications with their own private data, tapping into a competitive network of retrieval models without ever compromising on security or performance.
 
-This subnet specializes in optimizing RAG pipelines. Miners on the network contribute in several ways:
-- **Specific Knowledge Indexing**: They store and index embeddings derived from private, company-specific knowledge bases to enable highly accurate and secure searches. Miners never have access to the raw document content.
-- **Retrieval Algorithm Optimization**: They develop and run information retrieval algorithms optimized for specific domains.
-- **Secure Retrieval**: They return document IDs corresponding to the most relevant information, which the enterprise can then use to retrieve the actual content from its own secure datastores.
+## What This Subnet Solves for an Enterprise
 
-### Strategic Partnership
+By participating in the CERS subnet, businesses can overcome common RAG hurdles and gain a distinct advantage:
 
-As a leader in enterprise AI solutions, Cohere uses this subnet to offer its clients enhanced customization and performance for their language models on proprietary data. This partnership allows companies to benefit from a decentralized, robust, and secure RAG infrastructure without having to manage it in-house.
+-   **🚀 Superior RAG Performance**: Move beyond generic retrieval models. Leverage a global network of miners who are incentivized to develop and operate highly specialized and optimized retrieval algorithms tailored to your specific domain and data types.
+
+-   **🔒 Uncompromised Data Security**: Your proprietary documents and sensitive information **never** leave your secure environment. The subnet is designed with a privacy-first architecture that operates exclusively on non-reversible data embeddings. (See [Security and Data Privacy](#-security-and-data-privacy) for details).
+
+-   **💰 Cost-Effective Scalability**: Offload the heavy computational and maintenance burden of indexing and retrieval to a decentralized network. This allows you to pay for top-tier performance without the massive overhead of building and maintaining complex infrastructure in-house.
+
+-   **🧩 Unmatched Customization**: The subnet fosters a competitive ecosystem where miners can specialize in different industries (e.g., finance, healthcare, legal) and data formats. This gives you access to a marketplace of tailored solutions that best fit your unique business needs.
+
+-   **🤝 Powered by Cohere & Bittensor**: This subnet brings together Cohere's leadership in enterprise-grade AI and Large Language Models with Bittensor's robust, decentralized incentive network, creating a powerful and reliable foundation for your RAG applications.
 
 ---
 
@@ -142,7 +146,7 @@ btcli wallet new_coldkey --wallet.name my_wallet
 btcli wallet new_hotkey --wallet.name my_wallet --wallet.hotkey default
 ```
 
-### 3. Run the Subnet
+### 3. Run
 
 You can participate in the subnet as either a miner or a validator.
 
@@ -153,11 +157,10 @@ To run a miner, use the following command:
 python neurons/miner.py --netuid <your-netuid> --wallet.name my_wallet --wallet.hotkey default --logging.debug --miner.api_key <your_secure_api_key>
 ```
 
-**To run a validator:**
+**For validators:**
 ```bash
 python neurons/validator.py --netuid <your-netuid> --wallet.name my_wallet --wallet.hotkey default --logging.debug
 ```
-> **Note**: Replace `<your-netuid>` with the actual `netuid` of the subnet you wish to connect to.
 
 For more detailed instructions, including how to register your keys and run on different networks (local, testnet, mainnet), please refer to our full documentation:
 - Running Subnet Locally
