@@ -23,6 +23,7 @@
   - [2. Configure Your Wallet](#2-configure-your-wallet)
   - [3. Run](#3-run)
     - [For Miners](#for-miners)
+    - [For Validators](#for-validators)
 - [License](#license)
 
 ---
@@ -156,15 +157,11 @@ You can participate in the subnet as either a miner or a validator.
 
 #### For Miners
 
-To run a miner, use the following command:
-```bash
-python neurons/miner.py --netuid <your-netuid> --wallet.name my_wallet --wallet.hotkey default --logging.debug --miner.api_key <your_secure_api_key>
-```
+Miners are the core of the CERS subnet, responsible for indexing and retrieving information. For detailed instructions on how to set up and run a miner, including hardware requirements and configuration, please refer to the **[Miner README](./neurons/miners/README.md)**.
 
-**For validators:**
-```bash
-python neurons/validator.py --netuid <your-netuid> --wallet.name my_wallet --wallet.hotkey default --logging.debug
-```
+#### For Validators
+
+Validators are responsible for evaluating miners and ensuring the integrity of the network. For detailed instructions on how to set up and run a validator, please refer to the **[Validator README](./neurons/validators/README.md)**.
 
 For more detailed instructions, including how to register your keys and run on different networks (local, testnet, mainnet), please refer to our full documentation:
 - Running Subnet Locally
