@@ -50,17 +50,21 @@ By participating in the CERS subnet, businesses can overcome common RAG hurdles 
 
 ## How it works on Bittensor
 
-The Bittensor blockchain hosts multiple self-contained incentive mechanisms called **subnets**. Subnets are playing fields in which:
-- Subnet miners who produce value, and
-- Subnet validators who produce consensus
+This subnet leverages Bittensor's core incentive mechanism to create a competitive marketplace for high-performance information retrieval. Here's how the components work together:
 
-determine together the proper distribution of TAO for the purpose of incentivizing the creation of value, i.e., generating digital commodities, such as intelligence or data. 
+-   **Validators as Enterprise Proxies**: Validators act on behalf of an enterprise. They send query embeddings (derived from user questions) to the network of miners. Their primary role is to evaluate the quality and relevance of the miners' responses.
 
-Each subnet consists of:
-- Subnet miners and subnet validators.
-- A protocol using which the subnet miners and subnet validators interact with one another. This protocol is part of the incentive mechanism.
-- The Bittensor API using which the subnet miners and subnet validators interact with Bittensor's onchain consensus engine [Yuma Consensus](https://bittensor.com/documentation/validating/yuma-consensus). The Yuma Consensus is designed to drive these actors: subnet validators and subnet miners, into agreement on who is creating value and what that value is worth. 
+-   **Miners as Specialized Retrieval Engines**: Miners are the workhorses of the subnet. Their job is to:
+    1.  Securely receive and index document embeddings provided by the enterprise via a private API.
+    2.  Run sophisticated, high-speed search algorithms to find the most relevant document embeddings for a given query embedding.
+    3.  Return a ranked list of document IDs to the validator.
 
+-   **Incentivizing Performance with TAO**: The magic happens in the evaluation step.
+    1.  Validators use a benchmark dataset (a set of queries with known relevant document IDs) to score the responses from each miner.
+    2.  Performance is measured based on retrieval accuracy (e.g., precision, recall, MRR).
+    3.  Based on these scores, validators set weights on the Bittensor network. Miners who consistently provide the most accurate and fastest results receive a larger share of the network's TAO rewards.
+
+This continuous cycle of competition and reward drives miners to constantly innovate and optimize their retrieval models, ensuring that enterprises always have access to a state-of-the-art, decentralized retrieval system for their RAG applications.
 
 ---
 
