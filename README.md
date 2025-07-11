@@ -1,6 +1,6 @@
 <div align="center">
 
-# **Cohere Enterprise RAG Subnet** <!-- omit in toc -->
+# **Cohere Enterprise RAG Subnet xx** <!-- omit in toc -->
 [![Discord Chat](https://img.shields.io/discord/308323056592486420.svg)](https://discord.gg/bittensor) <!-- TODO: Update with the project's Discord if applicable -->
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) 
 
