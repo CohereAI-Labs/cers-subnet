@@ -18,6 +18,8 @@
 
 import time
 import os
+import sys
+import torch
 
 # Bittensor
 import bittensor as bt
@@ -47,32 +49,54 @@ class Validator(BaseValidatorNeuron):
 
         bt.logging.info("Validator for Cohere Enterprise RAG Subnet initialized.")
 
-        # TODO(developer): Anything specific to your use case you can do here.
-        # For this example, we'll load a model for scoring responses.
-        self.cross_encoder_model = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
-        bt.logging.info("Cross Encoder model loaded for scoring.")
+        # Explicitly set the device to use for the model
+        self.device = self.config.get("neuron.device", "cuda" if torch.cuda.is_available() else "cpu")
+        bt.logging.info(f"Using device: {self.device}")
+
+        # Load the scoring model from configuration
+        model_name = self.config.get('validator.cross_encoder_model', 'cross-encoder/ms-marco-MiniLM-L-6-v2')
+        try:
+            self.cross_encoder_model = CrossEncoder(model_name, device=self.device)
+            bt.logging.info(f"Cross Encoder model '{model_name}' loaded successfully on {self.device}.")
+        except Exception as e:
+            bt.logging.error(f"Failed to load Cross Encoder model '{model_name}'. Error: {e}")
+            bt.logging.error("Please ensure the model name is correct and you have an internet connection if it needs to be downloaded.")
+            sys.exit(1) # Exit if the model can't be loaded, as it's essential for scoring.
         
         # Load queries from a file to make them easily configurable
         self.queries = self.load_queries()
+        if not self.queries:
+            bt.logging.error("No queries loaded. The validator requires queries to function.")
+            sys.exit(1)
 
-    def load_queries(self):
+    def load_queries(self) -> list[str]:
         """Loads queries from the data/queries.txt file."""
         queries_file = self.config.get('validator.queries_file', 'data/queries.txt')
         queries_path = os.path.join(
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 
             queries_file
         )
+        queries = []
         try:
             with open(queries_path, "r", encoding="utf-8") as f:
                 queries = [line.strip() for line in f if line.strip()]
-            bt.logging.info(f"Loaded {len(queries)} queries from {queries_path}")
-            return queries
+            if queries:
+                bt.logging.info(f"Loaded {len(queries)} queries from {queries_path}")
+            else:
+                bt.logging.warning(f"Queries file at {queries_path} is empty.")
+
         except FileNotFoundError:
             bt.logging.warning(f"Queries file not found at {queries_path}. Using default queries.")
-            return [
+        
+        # If loading failed or the file was empty, use a default list
+        if not queries:
+            queries = [
                 "What is Bittensor?", "How does Cohere's RAG work?", 
                 "Explain the concept of a decentralized AI network.", "What is the capital of France?"
             ]
+            bt.logging.info(f"Using {len(queries)} default queries.")
+        
+        return queries
 
     async def forward(self):
         """

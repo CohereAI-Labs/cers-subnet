@@ -117,7 +117,7 @@ A Docker container provides a consistent and isolated environment for running th
         --gpus all \
         cers-miner \
         python neurons/miner.py \
-            --netuid <your_netuid> \
+            --netuid 69 \
             --wallet.name my_miner_wallet \
             --wallet.hotkey default \
             --miner.db_path /app/chroma_db

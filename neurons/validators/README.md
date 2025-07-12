@@ -56,7 +56,7 @@ btcli wallet new_hotkey --wallet.name my_validator_wallet --wallet.hotkey defaul
 Launch the validator, pointing it to your wallet and the desired netuid.
 ```bash
 python neurons/validator.py \
-    --netuid <your_netuid> \
+    --netuid 69 \
     --wallet.name my_validator_wallet \
     --wallet.hotkey default \
     --logging.debug
@@ -77,7 +77,7 @@ A Docker container provides a consistent and isolated environment.
         --name cers-validator-container \
         cers-validator \
         python neurons/validator.py \
-            --netuid <your_netuid> \
+            --netuid 69 \
             --wallet.name my_validator_wallet \
             --wallet.hotkey default
     ```
