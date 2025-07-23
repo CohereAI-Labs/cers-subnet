@@ -39,26 +39,24 @@ async def query_synapse(my_uid, wallet_name, hotkey, network, netuid):
     # Create a Dendrite instance to handle client-side communication.
     dendrite = bt.dendrite(wallet=wallet)
 
-    async def main():
-        responses = await dendrite(
-            [axon], syn, deserialize=False, streaming=True
-        )
+    responses = await dendrite(
+        [axon], syn, deserialize=False, streaming=True
+    )
 
-        for resp in responses:
-            i = 0
-            async for chunk in resp:
-                i += 1
-                if i % 5 == 0:
-                    print()
-                if isinstance(chunk, list):
-                    print(chunk[0], end="", flush=True)
-                else:
-                    # last object yielded is the synapse itself with completion filled
-                    synapse = chunk
-            break
-
-    # Run the main function with asyncio
-    await main()
+    # Since we are querying only one axon, we can process the first response.
+    # The `break` is included to exit after the first response is processed.
+    for resp in responses:
+        i = 0
+        async for chunk in resp:
+            i += 1
+            if i % 5 == 0:
+                print()
+            if isinstance(chunk, list):
+                print(chunk[0], end="", flush=True)
+            else:
+                # last object yielded is the synapse itself with completion filled
+                synapse = chunk
+        break
 
 
 if __name__ == "__main__":

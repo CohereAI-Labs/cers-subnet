@@ -46,10 +46,24 @@ class BaseValidatorNeuron(BaseNeuron):
 
     @classmethod
     def add_args(cls, parser: argparse.ArgumentParser):
+        """
+        Adds validator-specific arguments to the command-line parser.
+        """
         super().add_args(parser)
         add_validator_args(cls, parser)
 
     def __init__(self, config=None):
+        """
+        Initializes the base validator neuron.
+
+        This constructor sets up the essential components for a validator, including:
+        - Configuration loading and validation.
+        - Hotkey and dendrite initialization.
+        - Initial scoring weights for miners.
+        - Network synchronization.
+        - Axon serving for external connections.
+        - Asynchronous event loop management.
+        """
         super().__init__(config=config)
 
         # Save a copy of the hotkeys to local memory.
@@ -110,6 +124,12 @@ class BaseValidatorNeuron(BaseNeuron):
             pass
 
     async def concurrent_forward(self):
+        """
+        Executes multiple forward passes concurrently.
+
+        This method runs `num_concurrent_forwards` forward passes in parallel,
+        allowing the validator to query multiple miners at once.
+        """
         coroutines = [
             self.forward()
             for _ in range(self.config.neuron.num_concurrent_forwards)
@@ -173,8 +193,8 @@ class BaseValidatorNeuron(BaseNeuron):
 
     def run_in_background_thread(self):
         """
-        Starts the validator's operations in a background thread upon entering the context.
-        This method facilitates the use of the validator in a 'with' statement.
+        Starts the validator's operations in a separate background thread.
+        This is useful for running the validator non-blockingly.
         """
         if not self.is_running:
             bt.logging.debug("Starting validator in background thread.")
@@ -196,6 +216,10 @@ class BaseValidatorNeuron(BaseNeuron):
             bt.logging.debug("Stopped")
 
     def __enter__(self):
+        """
+        Starts the validator's operations in a background thread upon entering the context.
+        This method facilitates the use of the validator in a 'with' statement.
+        """
         self.run_in_background_thread()
         return self
 
@@ -230,6 +254,9 @@ class BaseValidatorNeuron(BaseNeuron):
                 f"Scores contain NaN values. This may be due to a lack of responses from miners, or a bug in your reward functions."
             )
 
+        # Normalize scores to produce weights. This step ensures that the weights
+        # are proportional to the scores and sum to 1, meeting the chain's requirements.
+        #
         # Calculate the average reward for each uid across non-zero values.
         # Replace any NaN values with 0.
         # Compute the norm of the scores
